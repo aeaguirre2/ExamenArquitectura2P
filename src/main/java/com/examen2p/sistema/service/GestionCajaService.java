@@ -22,6 +22,7 @@ import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
+import com.examen2p.sistema.controller.dto.TurnoCajaAperturaResponse;
 
 @Slf4j
 @Service
@@ -33,8 +34,7 @@ public class GestionCajaService {
     private final TransaccionTurnoMapper transaccionTurnoMapper;
 
     @Transactional
-    public TurnoCajaDTO abrirTurno(TurnoCajaAperturaRequest request) {
-        // Mapear manualmente los campos necesarios
+    public TurnoCajaAperturaResponse abrirTurno(TurnoCajaAperturaRequest request) {
         TurnoCaja turno = new TurnoCaja();
         turno.setCodigoCaja(request.getCodigoCaja());
         turno.setCodigoCajero(request.getCodigoCajero());
@@ -42,16 +42,30 @@ public class GestionCajaService {
         turno.setMontoInicial(request.getMontoInicial());
         turno.setDenominacionesIniciales(request.getDenominacionesIniciales());
         turno.setEstado(com.examen2p.sistema.enums.EstadoTurno.ABIERTO);
-        // Código de turno generado
         String codigoTurno = request.getCodigoCaja() + "-" + request.getCodigoCajero() + "-" + java.time.LocalDate.now().toString().replace("-", "");
         turno.setCodigoTurno(codigoTurno);
-        // Guardar en la base de datos
         turnoCajaRepository.save(turno);
-        return turnoCajaMapper.toDTO(turno);
+        // Mapear manualmente a la respuesta limpia
+        TurnoCajaAperturaResponse response = new TurnoCajaAperturaResponse();
+        response.setCodigoTurno(turno.getCodigoTurno());
+        response.setCodigoCaja(turno.getCodigoCaja());
+        response.setCodigoCajero(turno.getCodigoCajero());
+        response.setInicioTurno(turno.getInicioTurno());
+        response.setMontoInicial(turno.getMontoInicial());
+        response.setEstado(turno.getEstado());
+        response.setDenominacionesIniciales(turno.getDenominacionesIniciales());
+        return response;
     }
 
     @Transactional
     public TransaccionTurnoDTO procesarTransaccion(TransaccionTurnoRequest request) {
+        // Validar que el codigoCaja y codigoCajero coincidan con el codigoTurno
+        String[] partes = request.getCodigoTurno().split("-");
+        String cajaTurno = partes[0];
+        String cajeroTurno = partes[1];
+        if (!cajaTurno.equals(request.getCodigoCaja()) || !cajeroTurno.equals(request.getCodigoCajero())) {
+            throw new RuntimeException("El código de caja o cajero no coincide con el código de turno.");
+        }
         // Mapear manualmente los campos necesarios
         TransaccionTurno transaccion = new TransaccionTurno();
         transaccion.setCodigoCaja(request.getCodigoCaja());

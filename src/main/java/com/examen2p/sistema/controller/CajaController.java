@@ -23,18 +23,44 @@ import java.util.List;
 public class CajaController {
     private final GestionCajaService gestionCajaService;
 
-    @Operation(summary = "Abrir turno de caja", description = "Inicia un nuevo turno para un cajero en una caja específica.")
+    @Operation(summary = "Abrir turno de caja", description = "Inicia un nuevo turno para un cajero en una caja específica. El código de turno generado debe ser usado en todas las transacciones y para cerrar el turno.",
+        requestBody = @io.swagger.v3.oas.annotations.parameters.RequestBody(
+            required = true,
+            content = @Content(
+                schema = @Schema(implementation = TurnoCajaAperturaRequest.class),
+                examples = {
+                    @io.swagger.v3.oas.annotations.media.ExampleObject(
+                        value = "{\n  \"codigoCaja\": \"CAJ01\",\n  \"codigoCajero\": \"USU01\",\n  \"montoInicial\": 1000,\n  \"denominacionesIniciales\": [ { \"valor\": 10, \"cantidad\": 50, \"monto\": 500 } ]\n}",
+                        summary = "Ejemplo de apertura de turno"
+                    )
+                }
+            )
+        )
+    )
     @ApiResponses(value = {
-        @ApiResponse(responseCode = "200", description = "Turno abierto correctamente", content = @Content(schema = @Schema(implementation = TurnoCajaDTO.class))),
+        @ApiResponse(responseCode = "200", description = "Turno abierto correctamente. El campo codigoTurno de la respuesta debe usarse en las transacciones y cierre.", content = @Content(schema = @Schema(implementation = TurnoCajaAperturaResponse.class))),
         @ApiResponse(responseCode = "400", description = "Datos inválidos", content = @Content)
     })
     @PostMapping("/abrir")
-    public ResponseEntity<TurnoCajaDTO> abrirTurno(@Valid @RequestBody TurnoCajaAperturaRequest request) {
-        TurnoCajaDTO result = gestionCajaService.abrirTurno(request);
+    public ResponseEntity<TurnoCajaAperturaResponse> abrirTurno(@Valid @RequestBody TurnoCajaAperturaRequest request) {
+        TurnoCajaAperturaResponse result = gestionCajaService.abrirTurno(request);
         return ResponseEntity.ok(result);
     }
 
-    @Operation(summary = "Procesar transacción de turno", description = "Registra una transacción (depósito o retiro) en un turno abierto.")
+    @Operation(summary = "Procesar transacción de turno", description = "Registra una transacción (depósito o retiro) en un turno abierto. Debes usar el código de turno recibido al abrir el turno.",
+        requestBody = @io.swagger.v3.oas.annotations.parameters.RequestBody(
+            required = true,
+            content = @Content(
+                schema = @Schema(implementation = TransaccionTurnoRequest.class),
+                examples = {
+                    @io.swagger.v3.oas.annotations.media.ExampleObject(
+                        value = "{\n  \"codigoCaja\": \"CAJ01\",\n  \"codigoCajero\": \"USU01\",\n  \"codigoTurno\": \"CAJ01-USU01-20250709\",\n  \"tipoTransaccion\": \"DEPOSITO\",\n  \"montoTotal\": 200,\n  \"denominaciones\": [ { \"valor\": 20, \"cantidad\": 10, \"monto\": 200 } ]\n}",
+                        summary = "Ejemplo de transacción"
+                    )
+                }
+            )
+        )
+    )
     @ApiResponses(value = {
         @ApiResponse(responseCode = "200", description = "Transacción procesada correctamente", content = @Content(schema = @Schema(implementation = TransaccionTurnoDTO.class))),
         @ApiResponse(responseCode = "404", description = "Turno no encontrado", content = @Content)
@@ -45,7 +71,20 @@ public class CajaController {
         return ResponseEntity.ok(result);
     }
 
-    @Operation(summary = "Cerrar turno de caja", description = "Finaliza un turno, registrando las denominaciones y el monto final. Genera alerta si hay diferencia de montos.")
+    @Operation(summary = "Cerrar turno de caja", description = "Finaliza un turno, registrando las denominaciones y el monto final. Debes usar el código de turno generado al abrir el turno.",
+        requestBody = @io.swagger.v3.oas.annotations.parameters.RequestBody(
+            required = true,
+            content = @Content(
+                schema = @Schema(implementation = CierreTurnoRequest.class),
+                examples = {
+                    @io.swagger.v3.oas.annotations.media.ExampleObject(
+                        value = "{\n  \"denominacionesFinales\": [ { \"valor\": 10, \"cantidad\": 30, \"monto\": 300 } ],\n  \"montoFinal\": 300\n}",
+                        summary = "Ejemplo de cierre de turno"
+                    )
+                }
+            )
+        )
+    )
     @ApiResponses(value = {
         @ApiResponse(responseCode = "200", description = "Turno cerrado correctamente", content = @Content(schema = @Schema(implementation = TurnoCajaDTO.class))),
         @ApiResponse(responseCode = "400", description = "Diferencia de montos detectada", content = @Content),

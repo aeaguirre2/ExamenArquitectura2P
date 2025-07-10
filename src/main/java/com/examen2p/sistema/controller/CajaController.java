@@ -29,8 +29,8 @@ public class CajaController {
         @ApiResponse(responseCode = "400", description = "Datos inválidos", content = @Content)
     })
     @PostMapping("/abrir")
-    public ResponseEntity<TurnoCajaDTO> abrirTurno(@Valid @RequestBody TurnoCajaDTO dto) {
-        TurnoCajaDTO result = gestionCajaService.abrirTurno(dto);
+    public ResponseEntity<TurnoCajaDTO> abrirTurno(@Valid @RequestBody TurnoCajaAperturaRequest request) {
+        TurnoCajaDTO result = gestionCajaService.abrirTurno(request);
         return ResponseEntity.ok(result);
     }
 
@@ -40,8 +40,8 @@ public class CajaController {
         @ApiResponse(responseCode = "404", description = "Turno no encontrado", content = @Content)
     })
     @PostMapping("/transaccion")
-    public ResponseEntity<TransaccionTurnoDTO> procesarTransaccion(@Valid @RequestBody TransaccionTurnoDTO dto) {
-        TransaccionTurnoDTO result = gestionCajaService.procesarTransaccion(dto);
+    public ResponseEntity<TransaccionTurnoDTO> procesarTransaccion(@Valid @RequestBody TransaccionTurnoRequest request) {
+        TransaccionTurnoDTO result = gestionCajaService.procesarTransaccion(request);
         return ResponseEntity.ok(result);
     }
 

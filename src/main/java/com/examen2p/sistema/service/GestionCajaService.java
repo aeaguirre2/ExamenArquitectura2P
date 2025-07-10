@@ -1,6 +1,8 @@
 package com.examen2p.sistema.service;
 
 import com.examen2p.sistema.controller.dto.*;
+import com.examen2p.sistema.controller.dto.TurnoCajaAperturaRequest;
+import com.examen2p.sistema.controller.dto.TransaccionTurnoRequest;
 import com.examen2p.sistema.controller.mapper.TurnoCajaMapper;
 import com.examen2p.sistema.controller.mapper.TransaccionTurnoMapper;
 import com.examen2p.sistema.enums.EstadoTurno;
@@ -9,6 +11,8 @@ import com.examen2p.sistema.exception.AlertaDiferenciaMontoException;
 import com.examen2p.sistema.exception.TurnoNotFoundException;
 import com.examen2p.sistema.model.TurnoCaja;
 import com.examen2p.sistema.model.TransaccionTurno;
+import com.examen2p.sistema.repository.TurnoCajaRepository;
+import com.examen2p.sistema.repository.TransaccionTurnoRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.mongodb.repository.MongoRepository;
@@ -29,28 +33,36 @@ public class GestionCajaService {
     private final TransaccionTurnoMapper transaccionTurnoMapper;
 
     @Transactional
-    public TurnoCajaDTO abrirTurno(TurnoCajaDTO dto) {
-        String codigoTurno = generarCodigoTurno(dto.getCodigoCaja(), dto.getCodigoCajero(), LocalDateTime.now());
-        dto.setCodigoTurno(codigoTurno);
-        dto.setInicioTurno(LocalDateTime.now());
-        dto.setEstado(EstadoTurno.ABIERTO);
-        TurnoCaja turno = turnoCajaMapper.toModel(dto);
+    public TurnoCajaDTO abrirTurno(TurnoCajaAperturaRequest request) {
+        // Mapear manualmente los campos necesarios
+        TurnoCaja turno = new TurnoCaja();
+        turno.setCodigoCaja(request.getCodigoCaja());
+        turno.setCodigoCajero(request.getCodigoCajero());
+        turno.setInicioTurno(java.time.LocalDateTime.now());
+        turno.setMontoInicial(request.getMontoInicial());
+        turno.setDenominacionesIniciales(request.getDenominacionesIniciales());
+        turno.setEstado(com.examen2p.sistema.enums.EstadoTurno.ABIERTO);
+        // Código de turno generado
+        String codigoTurno = request.getCodigoCaja() + "-" + request.getCodigoCajero() + "-" + java.time.LocalDate.now().toString().replace("-", "");
+        turno.setCodigoTurno(codigoTurno);
+        // Guardar en la base de datos
         turnoCajaRepository.save(turno);
-        log.info("Turno abierto: {}", codigoTurno);
         return turnoCajaMapper.toDTO(turno);
     }
 
     @Transactional
-    public TransaccionTurnoDTO procesarTransaccion(TransaccionTurnoDTO dto) {
-        TurnoCaja turno = turnoCajaRepository.findById(dto.getCodigoTurno())
-                .orElseThrow(() -> new TurnoNotFoundException(dto.getCodigoTurno()));
-        if (turno.getEstado() != EstadoTurno.ABIERTO) {
-            throw new RuntimeException("El turno no está abierto");
-        }
-        dto.setFecha(LocalDateTime.now());
-        TransaccionTurno transaccion = transaccionTurnoMapper.toModel(dto);
+    public TransaccionTurnoDTO procesarTransaccion(TransaccionTurnoRequest request) {
+        // Mapear manualmente los campos necesarios
+        TransaccionTurno transaccion = new TransaccionTurno();
+        transaccion.setCodigoCaja(request.getCodigoCaja());
+        transaccion.setCodigoCajero(request.getCodigoCajero());
+        transaccion.setCodigoTurno(request.getCodigoTurno());
+        transaccion.setTipoTransaccion(request.getTipoTransaccion());
+        transaccion.setMontoTotal(request.getMontoTotal());
+        transaccion.setDenominaciones(request.getDenominaciones());
+        transaccion.setFecha(java.time.LocalDateTime.now());
+        // Guardar en la base de datos
         transaccionTurnoRepository.save(transaccion);
-        log.info("Transacción procesada para turno: {}", dto.getCodigoTurno());
         return transaccionTurnoMapper.toDTO(transaccion);
     }
 
@@ -91,11 +103,5 @@ public class GestionCajaService {
             }
         }
         return total;
-    }
-
-    // Repositorios internos para MongoDB
-    public interface TurnoCajaRepository extends MongoRepository<TurnoCaja, String> {}
-    public interface TransaccionTurnoRepository extends MongoRepository<TransaccionTurno, String> {
-        List<TransaccionTurno> findByCodigoTurno(String codigoTurno);
     }
 } 
